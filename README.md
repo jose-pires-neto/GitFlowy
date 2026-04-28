@@ -46,6 +46,20 @@ pipx install git+https://github.com/jose-pires-neto/GitFlowy.git
 pip install git+https://github.com/jose-pires-neto/GitFlowy.git
 ```
 
+### 🗑️ Desinstalação
+
+Se você precisar remover o GitFlowy, utilize o comando correspondente ao método de instalação:
+
+**Se instalou via pipx:**
+```bash
+pipx uninstall gitflowy
+```
+
+**Se instalou via pip:**
+```bash
+pip uninstall gitflowy
+```
+
 > [!NOTE]
 > Certifique-se de ter o Python 3.7+ instalado em sua máquina.
 
