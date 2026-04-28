@@ -50,7 +50,7 @@ def get_changed_files():
 def main():
     # 1. Boas-vindas Elegante
     console.print()
-    console.print(Panel("[bold cyan]✨ GitMaster CLI[/bold cyan]\n[dim]Assistente de Commits Semânticos[/dim]", expand=False, border_style="cyan"))
+    console.print(Panel("[bold cyan]✨ GitFlowy CLI[/bold cyan]\n[dim]Assistente de Commits Semânticos[/dim]", expand=False, border_style="cyan"))
     console.print()
 
     # 2. Validação
