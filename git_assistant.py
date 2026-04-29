@@ -74,8 +74,8 @@ def is_git_repo():
 
 def get_changed_files():
     """Obtém a lista de arquivos modificados, adicionados ou deletados."""
-    # CORREÇÃO 2: Evita que o Git coloque aspas em arquivos com caracteres especiais (ç, acentos)
-    success, output = run_git(["-c", "core.quotePath=false", "status", "--porcelain"])
+    # CORREÇÃO 2: Evita aspas e usa -uall para mostrar arquivos dentro de pastas untracked
+    success, output = run_git(["-c", "core.quotePath=false", "status", "--porcelain", "-uall"])
     if not success or not output:
         return []
     
@@ -83,8 +83,16 @@ def get_changed_files():
     for line in output.split("\n"):
         if len(line) > 2:
             status = line[:2]
-            file_path = line[3:]
-            files.append(f"{status} {file_path}")
+            raw_path = line[3:]
+            # Trata o caso de arquivos renomeados no Git (ex: R  old -> new)
+            actual_path = raw_path.split(" -> ")[-1] if " -> " in raw_path else raw_path
+            
+            # Trabalhando com Dicionário, eliminamos bugs de fatiamento de strings
+            files.append({
+                "status": status,
+                "raw_path": raw_path,
+                "path": actual_path
+            })
     return files
 
 def get_branches():
@@ -99,8 +107,8 @@ def get_branches():
     
     return current_branch, [b for b in branches if b]
 
-def show_header():
-    """Mostra o cabeçalho no estilo Dashboard Náutico."""
+def show_header(view="HOME", subtitle="Mergulhando no código!"):
+    """Mostra o cabeçalho dinâmico no estilo Dashboard Náutico."""
     console.clear()
     
     current_branch, _ = get_branches()
@@ -120,7 +128,15 @@ def show_header():
 ⠀⠀⠀⠀⠀⠛⠙⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 """
     
-    left_info = f"{logo}\n[bold]Mergulhando no código![/bold]\n\n"
+    if view == "HOME":
+        # Tela inicial com a Logo Grande
+        left_info = f"{logo}\n[bold]{subtitle}[/bold]\n\n"
+    else:
+        # Display dinâmico (Substitui a logo pelas informações da ação atual)
+        left_info = f"\n\n[bold cyan]🌊 MODO: {view.upper()}[/bold cyan]\n[dim]{subtitle}[/dim]"
+        # Preenche com linhas em branco para manter a proporção do painel igual a da logo
+        left_info += "\n" * 9 
+        
     left_info += f"[dim]GitFlowy 0.2.0 • Terminal UI[/dim]\n"
     left_info += f"📍 /branch: [bold magenta]{current_branch if current_branch else 'Desconhecida'}[/bold magenta]\n"
     
@@ -146,8 +162,8 @@ def show_header():
     if changed_files:
         display_files = changed_files[:6]
         for f in display_files:
-            status = f[:2]
-            path = f[3:]
+            status = f["status"]
+            path = f["path"]
             
             if "M" in status or "R" in status:
                 color, icon = "blue", "📝"
@@ -164,7 +180,7 @@ def show_header():
             right_info += f"[{color}]{icon} {path}[/{color}]\n"
 
         if len(changed_files) > 6:
-            right_info += f"[dim]... e mais {len(changed_files) - 6} arquivo(s) modificado(s).[/dim]\n"
+            right_info += f"[dim]... e mais {len(changed_files) - 6} arquivo(s). Vá em 'Status Completo'.[/dim]\n"
     else:
         right_info += "[dim]✨ Tudo sincronizado. Nenhuma modificação pendente.[/dim]\n"
 
@@ -188,8 +204,72 @@ def show_header():
     console.print("\n[dim]" + "─" * 80 + "[/dim]\n")
 
 
+def handle_status():
+    """Exibe um status detalhado e organizado de todos os arquivos modificados."""
+    show_header("Status Completo", "Visão detalhada de todas as alterações")
+    files = get_changed_files()
+    
+    if not files:
+        console.print("✨ [bold green]A árvore de trabalho está limpa![/bold green] Nenhuma modificação pendente.")
+        questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
+        return
+
+    # Tabela detalhada de modificações
+    table = Table(title="📦 Arquivos Modificados (Status)", expand=True, box=box.ROUNDED)
+    table.add_column("Estado", justify="center", style="bold", width=18)
+    table.add_column("Diretório", style="cyan")
+    table.add_column("Arquivo", style="white")
+
+    for f in files:
+        status = f["status"]
+        path = f["path"]
+        raw_path = f["raw_path"]
+        
+        color = "white"
+        estado = status.strip()
+        
+        if "??" in status:
+            estado, color = "✨ Untracked", "green"
+        elif "A" in status:
+            estado, color = "✅ Adicionado", "green"
+        elif "M" in status:
+            estado, color = "📝 Modificado", "blue"
+        elif "D" in status:
+            estado, color = "🗑️ Deletado", "red"
+        elif "R" in status:
+            estado, color = "🔄 Renomeado", "magenta"
+        
+        # Desmembra o caminho para visualização em colunas
+        dir_name = os.path.dirname(path)
+        file_name = os.path.basename(path)
+        
+        if not dir_name:
+            dir_name = "/" # Representa a raiz do repositório
+        else:
+            dir_name = f"/{dir_name}/"
+            
+        if "R" in status:
+            # Em caso de Renomeação já registrada pelo git, exibe o fluxo todo
+            file_name = raw_path
+            dir_name = "🔄"
+        
+        table.add_row(f"[{color}]{estado}[/{color}]", f"[dim]{dir_name}[/dim]", f"[{color}]{file_name}[/{color}]")
+    
+    console.print(table)
+    console.print(f"\n[dim]Total: {len(files)} arquivo(s) modificado(s)[/dim]\n")
+    
+    action = questionary.select(
+        "O que deseja fazer?",
+        choices=["📝 Prosseguir para Commit", "Voltar ao Menu Principal"]
+    ).ask()
+    
+    if action == "📝 Prosseguir para Commit":
+        handle_commit()
+
+
 def handle_commit():
     """Fluxo de commit (Adicionar Tudo vs Selecionar)"""
+    show_header("Fazer Commit", "Adicione e descreva suas alterações")
     changed_files = get_changed_files()
     
     if not changed_files:
@@ -213,7 +293,8 @@ def handle_commit():
     if "TUDO" in add_mode:
         selected_files = ["."]
     else:
-        file_choices = [f[3:] for f in changed_files]
+        # Usa o caminho exato armazenado no dicionário
+        file_choices = [f["path"] for f in changed_files]
         selected_files = questionary.checkbox(
             "Selecione os arquivos para o commit:",
             choices=file_choices,
@@ -222,6 +303,7 @@ def handle_commit():
 
         if not selected_files:
             console.print("[yellow]Nenhum arquivo selecionado.[/yellow]")
+            questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
             return
 
     commit_type = questionary.select(
@@ -273,10 +355,11 @@ def handle_commit():
 
 def handle_branches():
     """Gerenciador de Branches visual"""
+    show_header("Gerenciar Branches", "Crie, navegue ou delete suas branches")
     current_branch, branches = get_branches()
     
     action = questionary.select(
-        "Gerenciar Branches - O que deseja fazer?",
+        "O que deseja fazer?",
         choices=[
             "🔄 Trocar de Branch",
             "🌱 Criar Nova Branch",
@@ -323,8 +406,9 @@ def handle_branches():
 
 def handle_sync():
     """Faz Push e Pull do repositório"""
+    show_header("Sincronização", "Envie ou baixe as alterações do servidor remoto")
     action = questionary.select(
-        "Sincronização",
+        "Selecione uma opção de rede:",
         choices=["⬆️  Push (Enviar alterações)", "⬇️  Pull (Puxar alterações)", "Voltar"]
     ).ask()
     
@@ -356,6 +440,7 @@ def handle_sync():
 
 def handle_history():
     """Mostra o histórico recente de commits em uma tabela bonita."""
+    show_header("Histórico (Log)", "Linha do tempo dos commits")
     # CORREÇÃO: Usando um delimitador complexo '<||>' pois um commit pode possuir '|' no título
     success, output = run_git(["log", "-n", "10", "--pretty=format:%h<||>%s<||>%ar<||>%an"])
     if not success or not output:
@@ -363,7 +448,7 @@ def handle_history():
         questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
         return
 
-    table = Table(title="Histórico Recente (Últimos 10 commits)")
+    table = Table(title="Histórico Recente (Últimos 10 commits)", expand=True)
     table.add_column("Hash", style="cyan", no_wrap=True)
     table.add_column("Mensagem", style="white")
     table.add_column("Tempo", style="green")
@@ -380,8 +465,9 @@ def handle_history():
 
 def handle_stash():
     """Gerencia o stash (área de rascunho)."""
+    show_header("Guarda-Volumes (Stash)", "Guarde suas alterações temporariamente")
     action = questionary.select(
-        "Guarda-volumes (Stash)",
+        "Selecione uma opção do Guarda-volumes:",
         choices=[
             "📦 Guardar alterações (Stash Save)",
             "📥 Recuperar últimas alterações (Stash Pop)",
@@ -418,6 +504,7 @@ def handle_stash():
 
 def handle_undo():
     """Ferramentas para desfazer ações (Reset, Restore)."""
+    show_header("Desfazer / Reverter", "Cuidado com ações irreversíveis!")
     action = questionary.select(
         "O que você deseja desfazer?",
         choices=[
@@ -452,11 +539,13 @@ def main():
         sys.exit(1)
 
     while True:
-        show_header()
+        # A tela de início carrega a logo no painel padrão
+        show_header(view="HOME", subtitle="Mergulhando no código!")
         
         choice = questionary.select(
             "Execute uma ação:",
             choices=[
+                "📊 Status Completo (Ver arquivos)",
                 "📝 Fazer Commit",
                 "🌿 Gerenciar Branches",
                 "🔄 Sincronizar (Push/Pull)",
@@ -467,7 +556,9 @@ def main():
             ]
         ).ask()
 
-        if choice == "📝 Fazer Commit":
+        if choice == "📊 Status Completo (Ver arquivos)":
+            handle_status()
+        elif choice == "📝 Fazer Commit":
             handle_commit()
         elif choice == "🌿 Gerenciar Branches":
             handle_branches()
