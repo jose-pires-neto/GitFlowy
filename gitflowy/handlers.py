@@ -1,6 +1,7 @@
 import os
 from rich.table import Table
 from rich.panel import Panel
+from rich.tree import Tree
 from rich import box
 import questionary
 
@@ -158,8 +159,36 @@ def handle_commit():
 
 def handle_branches():
     """Gerenciador de Branches visual"""
-    show_header("Gerenciar Branches", "Crie, navegue ou delete suas branches")
     current_branch, branches = get_branches()
+    
+    tree = Tree("🌳 [bold green]Repositório Local[/bold green]", guide_style="bold cyan")
+    
+    # Identifica a branch principal (main ou master)
+    primary_branch = next((b for b in branches if b in ["main", "master"]), None)
+    
+    if primary_branch:
+        # A branch principal é o "tronco"
+        is_current = " 📍 [bold magenta](atual)[/bold magenta]" if primary_branch == current_branch else ""
+        main_node = tree.add(f"⭐ [bold cyan]{primary_branch}[/bold cyan]{is_current}")
+        
+        # As outras branches são "galhos" da principal
+        for b in branches:
+            if b != primary_branch:
+                if b == current_branch:
+                    main_node.add(f"🌿 [bold magenta]{b}[/bold magenta] 📍 [dim](atual)[/dim]")
+                else:
+                    main_node.add(f"🌿 [cyan]{b}[/cyan]")
+    else:
+        # Fallback caso não exista main/master
+        for b in branches:
+            if b == current_branch:
+                tree.add(f"🌿 [bold magenta]{b}[/bold magenta] 📍 [dim](atual)[/dim]")
+            else:
+                tree.add(f"🌿 [cyan]{b}[/cyan]")
+            
+    tree_panel = Panel(tree, title="Estrutura de Branches", border_style="cyan", expand=True)
+    
+    show_header("Gerenciar Branches", "Crie, navegue ou delete suas branches", custom_display=tree_panel)
     
     action = questionary.select(
         "O que deseja fazer?",
