@@ -103,7 +103,7 @@ def show_header(view="HOME", subtitle="Mergulhando no código!", custom_display=
 
     panel = Panel(
         panel_content,
-        title="[dim] GitFlowy v0.2.0 [/dim]",
+        title="[dim] GitFlowy v3.0.0 [/dim]",
         title_align="left",
         box=box.ROUNDED,
         border_style="#00CED1",
