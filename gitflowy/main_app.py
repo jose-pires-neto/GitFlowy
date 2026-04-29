@@ -2,10 +2,10 @@ import sys
 import questionary
 from gitflowy.theme import console
 from gitflowy.core import is_git_repo
-from gitflowy.ui import show_header
+from gitflowy.ui import show_header, grid_menu
 from gitflowy.handlers import (
     handle_status, handle_commit, handle_branches,
-    handle_sync, handle_history, handle_stash, handle_undo
+    handle_sync, handle_history, handle_stash, handle_undo, handle_tags
 )
 
 def main():
@@ -14,37 +14,38 @@ def main():
         console.print("Rode [yellow]git init[/yellow] primeiro!")
         sys.exit(1)
 
-    while True:
-        # A tela de início carrega a logo no painel padrão
-        show_header(view="HOME", subtitle="Mergulhando no código!")
-        
-        choice = questionary.select(
-            "Execute uma ação:",
-            choices=[
-                "📊 Status Completo (Ver arquivos)",
-                "📝 Fazer Commit",
-                "🌿 Gerenciar Branches",
-                "🔄 Sincronizar (Push/Pull)",
-                "📜 Ver Histórico (Log)",
-                "📦 Guarda-volumes (Stash)",
-                "↩️  Desfazer / Reverter",
-                "🚪 Sair"
-            ]
-        ).ask()
+    # Organização das opções na ordem de uso para formar o Grid 3x3 perfeito
+    options = [
+        "📝 Fazer Commit",
+        "📊 Status Completo",
+        "🔄 Sync (Push/Pull)",
+        "🌿 Branches",
+        "📜 Histórico (Log)",
+        "🏷️  Tags (Releases)",
+        "📦 Stash (Guarda)",
+        "↩️  Reverter",
+        "🚪 Sair"
+    ]
 
-        if choice == "📊 Status Completo (Ver arquivos)":
+    while True:
+        # A tela de início carrega a logo no painel padrão e agora exibe o grid interativo
+        choice = grid_menu(options, cols=3)
+
+        if choice == "📊 Status Completo":
             handle_status()
         elif choice == "📝 Fazer Commit":
             handle_commit()
-        elif choice == "🌿 Gerenciar Branches":
+        elif choice == "🌿 Branches":
             handle_branches()
-        elif choice == "🔄 Sincronizar (Push/Pull)":
+        elif choice == "🔄 Sync (Push/Pull)":
             handle_sync()
-        elif choice == "📜 Ver Histórico (Log)":
+        elif choice == "📜 Histórico (Log)":
             handle_history()
-        elif choice == "📦 Guarda-volumes (Stash)":
+        elif choice == "🏷️  Tags (Releases)":
+            handle_tags()
+        elif choice == "📦 Stash (Guarda)":
             handle_stash()
-        elif choice == "↩️  Desfazer / Reverter":
+        elif choice == "↩️  Reverter":
             handle_undo()
         elif choice == "🚪 Sair" or not choice:
             console.print("\n[dim]Até logo! Continue mergulhando no código. 🌊[/dim]")

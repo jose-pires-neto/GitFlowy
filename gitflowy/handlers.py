@@ -5,15 +5,15 @@ from rich import box
 import questionary
 
 from gitflowy.theme import console
-from gitflowy.core import get_changed_files, get_branches, run_git, has_gh_cli, run_gh
+from gitflowy.core import get_changed_files, get_branches, get_tags, run_git, has_gh_cli, run_gh
 from gitflowy.ui import show_header
 
 def handle_status():
     """Exibe um status detalhado e organizado de todos os arquivos modificados."""
-    show_header("Status Completo", "Visão detalhada de todas as alterações")
     files = get_changed_files()
     
     if not files:
+        show_header("Status Completo", "Visão detalhada de todas as alterações")
         console.print("✨ [bold green]A árvore de trabalho está limpa![/bold green] Nenhuma modificação pendente.")
         questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
         return
@@ -59,8 +59,8 @@ def handle_status():
         
         table.add_row(f"[{color}]{estado}[/{color}]", f"[dim]{dir_name}[/dim]", f"[{color}]{file_name}[/{color}]")
     
-    console.print(table)
-    console.print(f"\n[dim]Total: {len(files)} arquivo(s) modificado(s)[/dim]\n")
+    # Atualizado para renderizar a tabela no painel do header
+    show_header("Status Completo", f"Total: {len(files)} arquivo(s) modificado(s)", custom_right_panel=table)
     
     action = questionary.select(
         "O que deseja fazer?",
@@ -266,11 +266,12 @@ def handle_sync():
 
 
 def handle_history():
-    """Mostra o histórico recente de commits em uma tabela bonita."""
-    show_header("Histórico (Log)", "Linha do tempo dos commits")
+    """Mostra o histórico recente de commits em uma tabela bonita dentro do header."""
     # CORREÇÃO: Usando um delimitador complexo '<||>' pois um commit pode possuir '|' no título
     success, output = run_git(["log", "-n", "10", "--pretty=format:%h<||>%s<||>%ar<||>%an"])
+    
     if not success or not output:
+        show_header("Histórico (Log)", "Linha do tempo dos commits")
         console.print("[yellow]Nenhum histórico encontrado.[/yellow]")
         questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
         return
@@ -286,7 +287,7 @@ def handle_history():
         if len(parts) == 4:
             table.add_row(parts[0], parts[1], parts[2], parts[3])
     
-    console.print(table)
+    show_header("Histórico (Log)", "Linha do tempo dos commits", custom_right_panel=table)
     questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
 
 
@@ -329,9 +330,95 @@ def handle_stash():
     questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
 
 
+def handle_tags():
+    """Gerenciador de Tags (Releases)."""
+    tags = get_tags()
+    
+    # Criar display para as tags no custom_right_panel
+    table = Table(title="🏷️ Tags (Releases)", expand=True)
+    table.add_column("Tag", style="cyan", no_wrap=True)
+    table.add_column("Data de Criação", style="white")
+    
+    if tags:
+        for t in tags:
+            table.add_row(t["name"], t["date"])
+    else:
+        table.add_row("[dim]Nenhuma tag encontrada[/dim]", "")
+        
+    show_header("Gerenciador de Tags", "Crie, envie e apague tags de versão", custom_right_panel=table)
+    
+    action = questionary.select(
+        "O que deseja fazer com as Tags?",
+        choices=[
+            "➕ Criar nova Tag (Release)",
+            "⬆️  Enviar Tags para o remoto (Push)",
+            "🗑️  Deletar uma Tag",
+            "Voltar"
+        ]
+    ).ask()
+    
+    if not action or action == "Voltar": return
+    
+    if "Criar nova Tag" in action:
+        tag_name = questionary.text("Nome da Tag (ex: v1.0.0):").ask()
+        if tag_name:
+            tag_msg = questionary.text("Mensagem/Descrição da Tag (opcional):").ask()
+            args = ["tag", "-a", tag_name, "-m", tag_msg if tag_msg else f"Release {tag_name}"]
+            success, out = run_git(args)
+            if success:
+                console.print(f"[bold green]✅ Tag {tag_name} criada com sucesso no commit atual![/bold green]")
+            else:
+                console.print(f"[bold red]❌ Erro ao criar Tag:[/bold red]\n{out}")
+                
+    elif "Enviar Tags" in action:
+        with console.status("[bold cyan]Enviando tags para o repositório remoto...[/bold cyan]", spinner="dots"):
+            success, out = run_git(["push", "--tags"])
+        if success:
+            console.print("[bold green]✅ Todas as Tags foram enviadas com sucesso![/bold green]")
+        else:
+            console.print(f"[bold red]❌ Erro ao enviar Tags:[/bold red]\n{out}")
+            
+    elif "Deletar" in action:
+        if not tags:
+            console.print("[yellow]Não há tags para deletar.[/yellow]")
+            questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
+            return
+            
+        target = questionary.select(
+            "Qual Tag você deseja deletar?",
+            choices=[t["name"] for t in tags] + ["❌ Cancelar"]
+        ).ask()
+        
+        if target and target != "❌ Cancelar":
+            if questionary.confirm(f"Tem certeza que deseja apagar a tag '{target}'?").ask():
+                success, out = run_git(["tag", "-d", target])
+                if success:
+                    console.print(f"[green]Tag '{target}' deletada localmente.[/green]")
+                    with console.status("[bold cyan]Apagando do repositório remoto...[/bold cyan]", spinner="dots"):
+                        succ_rem, out_rem = run_git(["push", "--delete", "origin", target])
+                    if succ_rem:
+                        console.print(f"[green]Tag '{target}' deletada remotamente.[/green]")
+                    else:
+                        console.print(f"[yellow]Aviso: Não foi possível deletar remotamente: {out_rem}[/yellow]")
+                else:
+                    console.print(f"[red]Erro ao deletar localmente: {out}[/red]")
+                    
+    questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
+
+
 def handle_undo():
     """Ferramentas para desfazer ações (Reset, Restore)."""
-    show_header("Desfazer / Reverter", "Cuidado com ações irreversíveis!")
+    
+    # Vamos exibir as ações possíveis no painel direito por padrão, a menos que o usuário esteja revertendo um commit
+    default_undo_table = Table(title="Opções de Reversão", expand=True)
+    default_undo_table.add_column("Ação", style="bold cyan")
+    default_undo_table.add_column("Descrição", style="white")
+    default_undo_table.add_row("Desfazer Último Commit", "Apaga o commit mas preserva os arquivos (Seguro)")
+    default_undo_table.add_row("Reverter Commit", "Cria um commit reverso anulando uma ação (Seguro/Remoto)")
+    default_undo_table.add_row("Descartar Alterações", "Apaga todas as modificações atuais (IRREVERSÍVEL)")
+    
+    show_header("Desfazer / Reverter", "Cuidado com ações irreversíveis!", custom_right_panel=default_undo_table)
+    
     action = questionary.select(
         "O que você deseja desfazer?",
         choices=[
@@ -356,17 +443,27 @@ def handle_undo():
             questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
             return
             
+        # Monta a tabela visual de commits para exibir dentro do painel Header
+        table = Table(title="Últimos 15 Commits (Revert)", expand=True)
+        table.add_column("Hash", style="cyan", no_wrap=True)
+        table.add_column("Mensagem", style="white")
+        table.add_column("Tempo", style="green")
+
         commits = []
         for line in log_out.split('\n'):
             parts = line.split('<||>')
             if len(parts) == 3:
                 hash_id, msg, time_ago = parts
-                commits.append(questionary.Choice(title=f"{hash_id} - {msg} ({time_ago})", value=hash_id))
+                commits.append(questionary.Choice(title=f"{hash_id} - {msg[:50]}", value=hash_id))
+                table.add_row(hash_id, msg[:40] + ("..." if len(msg)>40 else ""), time_ago)
                 
+        # Atualiza o header colocando os commits dentro do display
+        show_header("Desfazer / Reverter", "Selecione o commit para reverter", custom_right_panel=table)
+        
         if not commits: return
         
         target_commit = questionary.select(
-            "Selecione qual commit você deseja REVERTER:",
+            "Qual commit você deseja REVERTER?",
             choices=commits + ["❌ Cancelar"]
         ).ask()
         

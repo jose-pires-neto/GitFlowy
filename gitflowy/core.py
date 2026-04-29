@@ -81,3 +81,17 @@ def get_branches():
     current_branch = current if success else ""
     
     return current_branch, [b for b in branches if b]
+
+def get_tags():
+    """Retorna a lista de tags existentes no repositório com suas datas de criação."""
+    success, output = run_git(["tag", "-l", "--format=%(refname:short)<||>%(creatordate:short)", "--sort=-creatordate"])
+    if not success or not output: return []
+    
+    tags = []
+    for line in output.split('\n'):
+        if '<||>' in line:
+            tag, date = line.split('<||>')
+            if tag:
+                tags.append({"name": tag, "date": date})
+    return tags
+
