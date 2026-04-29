@@ -60,7 +60,7 @@ def handle_status():
         table.add_row(f"[{color}]{estado}[/{color}]", f"[dim]{dir_name}[/dim]", f"[{color}]{file_name}[/{color}]")
     
     # Atualizado para renderizar a tabela no painel do header
-    show_header("Status Completo", f"Total: {len(files)} arquivo(s) modificado(s)", custom_right_panel=table)
+    show_header("Status Completo", f"Total: {len(files)} arquivo(s) modificado(s)", custom_display=table)
     
     action = questionary.select(
         "O que deseja fazer?",
@@ -287,7 +287,7 @@ def handle_history():
         if len(parts) == 4:
             table.add_row(parts[0], parts[1], parts[2], parts[3])
     
-    show_header("Histórico (Log)", "Linha do tempo dos commits", custom_right_panel=table)
+    show_header("Histórico (Log)", "Linha do tempo dos commits", custom_display=table)
     questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
 
 
@@ -334,7 +334,7 @@ def handle_tags():
     """Gerenciador de Tags (Releases)."""
     tags = get_tags()
     
-    # Criar display para as tags no custom_right_panel
+    # Criar display para as tags no custom_display
     table = Table(title="🏷️ Tags (Releases)", expand=True)
     table.add_column("Tag", style="cyan", no_wrap=True)
     table.add_column("Data de Criação", style="white")
@@ -345,7 +345,7 @@ def handle_tags():
     else:
         table.add_row("[dim]Nenhuma tag encontrada[/dim]", "")
         
-    show_header("Gerenciador de Tags", "Crie, envie e apague tags de versão", custom_right_panel=table)
+    show_header("Gerenciador de Tags", "Crie, envie e apague tags de versão", custom_display=table)
     
     action = questionary.select(
         "O que deseja fazer com as Tags?",
@@ -417,7 +417,7 @@ def handle_undo():
     default_undo_table.add_row("Reverter Commit", "Cria um commit reverso anulando uma ação (Seguro/Remoto)")
     default_undo_table.add_row("Descartar Alterações", "Apaga todas as modificações atuais (IRREVERSÍVEL)")
     
-    show_header("Desfazer / Reverter", "Cuidado com ações irreversíveis!", custom_right_panel=default_undo_table)
+    show_header("Desfazer / Reverter", "Cuidado com ações irreversíveis!", custom_display=default_undo_table)
     
     action = questionary.select(
         "O que você deseja desfazer?",
@@ -458,7 +458,7 @@ def handle_undo():
                 table.add_row(hash_id, msg[:40] + ("..." if len(msg)>40 else ""), time_ago)
                 
         # Atualiza o header colocando os commits dentro do display
-        show_header("Desfazer / Reverter", "Selecione o commit para reverter", custom_right_panel=table)
+        show_header("Desfazer / Reverter", "Selecione o commit para reverter", custom_display=table)
         
         if not commits: return
         

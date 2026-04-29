@@ -15,9 +15,9 @@ except ImportError:
     HAS_MSVCRT = False
 
 
-def show_header(view="HOME", subtitle="Mergulhando no código!", custom_right_panel=None, return_panel=False):
+def show_header(view="HOME", subtitle="Mergulhando no código!", custom_display=None, return_panel=False):
     """Mostra o cabeçalho dinâmico no estilo Dashboard Náutico.
-    Se custom_right_panel for fornecido, ele substitui a Atividade Recente.
+    Se custom_display for fornecido, ele ocupa todo o espaço do painel.
     """
     if not return_panel:
         console.clear()
@@ -25,7 +25,12 @@ def show_header(view="HOME", subtitle="Mergulhando no código!", custom_right_pa
     current_branch, _ = get_branches()
     changed_files = get_changed_files()
     
-    logo = """        
+    if custom_display is not None:
+        # Modo Full-Width Display
+        panel_content = custom_display
+    else:
+        # Modo Padrão Split (Esquerda e Direita)
+        logo = """        
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣤⣀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⡏⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⡒⠳⠍⠉⠢⡀⠀⠀⠀
@@ -38,28 +43,23 @@ def show_header(view="HOME", subtitle="Mergulhando no código!", custom_right_pa
 ⠀⠀⠀⠀⠀⢀⣴⡿⢟⠷⠃⠀⠀⠋⠁⠀⠀⠀⠀⠘⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣴⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ⠀⠀⠀⠀⠀⠛⠙⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 """
-    
-    if view == "HOME":
-        # Tela inicial com a Logo Grande
-        left_info = f"{logo}\n[bold]{subtitle}[/bold]\n\n"
-    else:
-        # Display dinâmico (Substitui a logo pelas informações da ação atual)
-        left_info = f"\n\n[bold cyan]🌊 MODO: {view.upper()}[/bold cyan]\n[dim]{subtitle}[/dim]"
-        # Preenche com linhas em branco para manter a proporção do painel igual a da logo
-        left_info += "\n" * 9 
         
-    left_info += f"[dim]GitFlowy 0.2.0 • Terminal UI[/dim]\n"
-    left_info += f"📍 /branch: [bold magenta]{current_branch if current_branch else 'Desconhecida'}[/bold magenta]\n"
-    
-    if changed_files:
-        left_info += f"🌊 /status: [bold yellow]{len(changed_files)} arquivo(s) modificado(s)[/bold yellow]"
-    else:
-        left_info += "✨ /status: [dim]Árvore limpa[/dim]"
+        if view == "HOME":
+            # Tela inicial com a Logo Grande
+            left_info = f"{logo}\n[bold]{subtitle}[/bold]\n\n"
+        else:
+            # Display dinâmico (Substitui a logo pelas informações da ação atual)
+            left_info = f"\n\n[bold cyan]🌊 MODO: {view.upper()}[/bold cyan]\n[dim]{subtitle}[/dim]"
+            left_info += "\n" * 9 
+            
+        left_info += f"[dim]GitFlowy 0.2.0 • Terminal UI[/dim]\n"
+        left_info += f"📍 /branch: [bold magenta]{current_branch if current_branch else 'Desconhecida'}[/bold magenta]\n"
         
-    
-    if custom_right_panel is not None:
-        right_info = custom_right_panel
-    else:
+        if changed_files:
+            left_info += f"🌊 /status: [bold yellow]{len(changed_files)} arquivo(s) modificado(s)[/bold yellow]"
+        else:
+            left_info += "✨ /status: [dim]Árvore limpa[/dim]"
+            
         success, log_out = run_git(["log", "-n", "4", "--pretty=format:%ar<||>%s"])
         right_info = "[#00CED1]Atividade Recente[/#00CED1]\n"
         if success and log_out:
@@ -97,13 +97,14 @@ def show_header(view="HOME", subtitle="Mergulhando no código!", custom_right_pa
         else:
             right_info += "[dim]✨ Tudo sincronizado. Nenhuma modificação pendente.[/dim]\n"
 
-    table = Table(show_header=False, expand=True, box=None, padding=(1, 2))
-    table.add_column("Esquerda", justify="center", ratio=1)
-    table.add_column("Direita", justify="left", ratio=1)
-    table.add_row(left_info, right_info)
+        table = Table(show_header=False, expand=True, box=None, padding=(1, 2))
+        table.add_column("Esquerda", justify="center", ratio=1)
+        table.add_column("Direita", justify="left", ratio=1)
+        table.add_row(left_info, right_info)
+        panel_content = table
 
     panel = Panel(
-        table,
+        panel_content,
         title="[dim] GitFlowy v0.2.0 [/dim]",
         title_align="left",
         box=box.ROUNDED,
@@ -115,7 +116,6 @@ def show_header(view="HOME", subtitle="Mergulhando no código!", custom_right_pa
     if return_panel:
         return panel
         
-    # Apenas limpa a tela e printa o painel (Sem linha extra embaixo para não poluir)
     console.print()
     console.print(panel)
 
