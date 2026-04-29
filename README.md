@@ -26,14 +26,16 @@ Trabalhar com Git pode ser repetitivo e propenso a erros de digitação ou padro
 
 ## ✨ Funcionalidades
 
-- [x] **Painel Interativo**: Menu principal contínuo para gerenciar o repo.
-- [x] **Smart Staging**: Opção de Adicionar TUDO ou selecionar arquivos em formato checklist.
+- [x] **Painel Interativo 3x3**: Menu principal super responsivo em grade, com navegação por setas do teclado.
+- [x] **Dashboard de Bordo**: Painel dinâmico que não polui seu histórico do terminal, mostrando status, logs e ferramentas em uma tela estática.
+- [x] **Smart Staging**: Opção de Adicionar TUDO ou selecionar arquivos em formato checklist interativo.
 - [x] **Commits Semânticos**: Menu guiado (tipo, escopo, mensagem).
 - [x] **Branch Manager**: Interface visual para trocar, criar e deletar branches locais.
-- [x] **Sincronização Fácil**: Opções de Push e Pull simplificadas com indicadores de carregamento.
-- [x] **Tabela de Histórico**: Visualize os últimos commits formatados visualmente (Hash, Msg, Tempo, Autor).
+- [x] **Tag Manager**: Liste, crie (vincule releases) e delete tags locais e remotas com facilidade.
+- [x] **Sincronização Fácil (com GitHub CLI)**: Push e Pull simplificados. Se você tiver a CLI do GitHub (`gh`) instalada, o GitFlowy se oferece para abrir um Pull Request logo após o Push!
+- [x] **Tabela de Histórico**: Visualize os últimos commits formatados elegantemente no painel de bordo.
+- [x] **Botão de Pânico Avançado**: Escolha entre um `git reset` (preserva arquivos), um `git revert` selecionado em uma lista visual de commits, ou descarte tudo caso o projeto pegue fogo.
 - [x] **Guarda-Volumes (Stash)**: Guarde ou recupere alterações inacabadas para transitar entre branches.
-- [x] **Botão de Pânico (Undo)**: Opções guiadas para desfazer o último commit ou limpar a árvore de trabalho completamente.
 
 ---
 
@@ -78,15 +80,17 @@ pip uninstall gitflowy
 gflow
 ```
 
-Um menu interativo será aberto. Use as setas do teclado para navegar e o Enter para selecionar a ação desejada:
+Um belíssimo Dashboard 3x3 será aberto. Use as **setas do teclado** para deslizar pelas opções e o **Enter** para selecionar a ação desejada:
 
-1. **Fazer Commit**
-2. **Gerenciar Branches**
-3. **Sincronizar (Push/Pull)**
-4. **Ver Histórico (Log)**
-5. **Guarda-volumes (Stash)**
-6. **Desfazer / Reverter**
-7. **Sair**
+1. **📝 Fazer Commit**
+2. **📊 Status Completo**
+3. **🔄 Sync (Push/Pull/PR)**
+4. **🌿 Branches**
+5. **📜 Histórico (Log)**
+6. **🏷️ Tags (Releases)**
+7. **📦 Stash (Guarda)**
+8. **↩️ Reverter**
+9. **🚪 Sair**
 
 ---
 

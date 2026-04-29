@@ -15,6 +15,5 @@ dependencies = [
 
 # Aqui acontece a mágica! 
 # 'gflow' será o comando que o usuário vai digitar no terminal.
-# 'git_assistant:main' diz para o Python procurar o arquivo git_assistant.py e rodar a função main()
 [project.scripts]
-gflow = "git_assistant:main"
+gflow = "gitflowy.main_app:main"
