@@ -7,6 +7,7 @@ try:
     from rich.panel import Panel
     from rich.text import Text
     from rich.table import Table
+    from rich import box
     import questionary
 except ImportError:
     print("⚠️  Dependências ausentes! Para a interface bonita, instale:")
@@ -15,6 +16,39 @@ except ImportError:
 
 console = Console()
 
+# --- TEMA OCEAN (Estilo Global - GitFlowy) ---
+custom_style = questionary.Style([
+    ('qmark', 'fg:#00CED1 bold'),       # Marca > ciano
+    ('question', 'bold default'),       # Texto da pergunta
+    ('answer', 'fg:#00BFFF bold'),      # Resposta preenchida
+    ('pointer', 'fg:#00CED1 bold'),     # Seta de navegação ciano
+    ('highlighted', 'fg:#00BFFF bold'), # Item atual na lista
+    ('selected', 'fg:#48D1CC bold'),    # Item de checkbox marcado
+    ('instruction', 'fg:#858585'),      # Dicas (cinza)
+])
+
+# Aplicando o tema e o marcador '>' em todos os prompts automaticamente (Monkey Patch)
+def apply_theme_with_qmark(func):
+    def wrapper(*args, **kwargs):
+        kwargs['style'] = custom_style
+        kwargs.setdefault('qmark', '>')
+        return func(*args, **kwargs)
+    return wrapper
+
+def apply_theme_only(func):
+    def wrapper(*args, **kwargs):
+        kwargs['style'] = custom_style
+        return func(*args, **kwargs)
+    return wrapper
+
+questionary.select = apply_theme_with_qmark(questionary.select)
+questionary.checkbox = apply_theme_with_qmark(questionary.checkbox)
+questionary.text = apply_theme_with_qmark(questionary.text)
+questionary.confirm = apply_theme_with_qmark(questionary.confirm)
+# CORREÇÃO 1: press_any_key não recebe qmark, recebe apenas o estilo visual.
+questionary.press_any_key_to_continue = apply_theme_only(questionary.press_any_key_to_continue)
+# ----------------------------------------
+
 def run_git(args, exit_on_error=False):
     """Executa um comando git de forma silenciosa. Retorna (sucesso, output_ou_erro)."""
     try:
@@ -22,11 +56,13 @@ def run_git(args, exit_on_error=False):
             ["git"] + args,
             capture_output=True,
             text=True,
+            encoding='utf-8', # CORREÇÃO 3: Previne quebra de encoding no Windows
+            errors='replace',
             check=True
         )
         return True, result.stdout.strip()
     except subprocess.CalledProcessError as e:
-        error_msg = e.stderr.strip() or e.stdout.strip()
+        error_msg = e.stderr.strip() if e.stderr else (e.stdout.strip() if e.stdout else str(e))
         if exit_on_error:
             console.print(f"[bold red]Erro crítico no Git:[/bold red] {error_msg}")
             sys.exit(1)
@@ -38,14 +74,14 @@ def is_git_repo():
 
 def get_changed_files():
     """Obtém a lista de arquivos modificados, adicionados ou deletados."""
-    success, output = run_git(["status", "--porcelain"])
+    # CORREÇÃO 2: Evita que o Git coloque aspas em arquivos com caracteres especiais (ç, acentos)
+    success, output = run_git(["-c", "core.quotePath=false", "status", "--porcelain"])
     if not success or not output:
         return []
     
     files = []
     for line in output.split("\n"):
         if len(line) > 2:
-            # Pega o caminho do arquivo e o status
             status = line[:2]
             file_path = line[3:]
             files.append(f"{status} {file_path}")
@@ -64,24 +100,93 @@ def get_branches():
     return current_branch, [b for b in branches if b]
 
 def show_header():
-    """Mostra o cabeçalho estilizado."""
+    """Mostra o cabeçalho no estilo Dashboard Náutico."""
     console.clear()
-    console.print()
-    console.print(Panel("[bold cyan]🌊 GitFlowy CLI[/bold cyan]\n[dim]Seu assistente Git definitivo[/dim]", expand=False, border_style="cyan"))
     
-    # Mostra a branch atual
     current_branch, _ = get_branches()
-    if current_branch:
-        console.print(f"📍 Branch atual: [bold magenta]{current_branch}[/bold magenta]")
-
-    # Mostra status rápido
-    files = get_changed_files()
-    if files:
-        console.print(f"📄 Arquivos com alterações: [bold yellow]{len(files)}[/bold yellow]\n")
+    changed_files = get_changed_files()
+    
+    logo = """        
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣤⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣀⣠⣤⣀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⡏⢧⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⡒⠳⠍⠉⠢⡀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡿⠟⣓⣬⣷⣶⣶⣿⠛⠒⢒⣒⡶⠖⠃⠀⠀⠀⠀⠈⢣⡀⠀
+⢀⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⢴⣚⣋⠉⠉⡈⠽⣿⣿⣿⡟⠀⠀⠉⠀⠀⠘⠓⠲⢶⣄⠀⠀⠀⢹⠀
+⠈⠻⢶⣤⣄⡀⠀⠀⠀⠀⠀⠀⠀⠀⢀⡀⠀⣀⣴⡞⠻⠿⡏⠉⠀⠀⠀⠠⠴⠛⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀⣠⠜⠿⣆⡀⠀⠘⣧
+⠀⠀⠀⠙⢿⣿⣷⣦⣄⡀⠀⠀⢀⣠⣾⣿⣿⣿⣿⠾⠶⠾⠓⠒⠒⠚⠉⠉⠀⠀⠀⠀⠀⣀⣀⡠⠤⠴⠚⠉⠀⠀⠀⠀⠙⠛⠛⠋
+⠀⠀⠀⠀⠀⠻⣿⣿⣿⣿⣶⣶⠿⢿⡿⠟⠋⣨⠁⠀⠀⠀⢀⣀⣀⡠⠤⠤⢤⣤⠖⠒⠀⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠀⠈⣿⣿⣿⣿⠓⠒⢶⣶⠖⠛⠛⠦⣄⢠⠏⠉⠀⠀⠀⠀⠀⠀⠈⠳⡄⠀⣻⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⢀⣴⡿⢟⠷⠃⠀⠀⠋⠁⠀⠀⠀⠀⠘⡿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠹⣴⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⠀⠛⠙⠈⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠛⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
+"""
+    
+    left_info = f"{logo}\n[bold]Mergulhando no código![/bold]\n\n"
+    left_info += f"[dim]GitFlowy 0.2.0 • Terminal UI[/dim]\n"
+    left_info += f"📍 /branch: [bold magenta]{current_branch if current_branch else 'Desconhecida'}[/bold magenta]\n"
+    
+    if changed_files:
+        left_info += f"🌊 /status: [bold yellow]{len(changed_files)} arquivo(s) modificado(s)[/bold yellow]"
     else:
-        console.print("✨ [dim]Nenhuma alteração pendente.[/dim]\n")
+        left_info += "✨ /status: [dim]Árvore limpa[/dim]"
+        
+    # ATUALIZADO: Usando um delimitador mais seguro para evitar quebras se a mensagem tiver \t
+    success, log_out = run_git(["log", "-n", "4", "--pretty=format:%ar<||>%s"])
+    
+    right_info = "[#00CED1]Atividade Recente[/#00CED1]\n"
+    if success and log_out:
+        for line in log_out.split('\n'):
+            parts = line.split('<||>')
+            if len(parts) == 2:
+                time_ago, msg = parts
+                right_info += f"[dim]{time_ago[:10]:<10} {msg[:45]}{'...' if len(msg)>45 else ''}[/dim]\n"
+    else:
+        right_info += "[dim]Nenhum commit recente encontrado.[/dim]\n"
+        
+    right_info += "\n[#00CED1]Status dos Arquivos[/#00CED1]\n"
+    if changed_files:
+        display_files = changed_files[:6]
+        for f in display_files:
+            status = f[:2]
+            path = f[3:]
+            
+            if "M" in status or "R" in status:
+                color, icon = "blue", "📝"
+            elif "??" in status or "A" in status:
+                color, icon = "green", "✨"
+            elif "D" in status:
+                color, icon = "red", "🗑️"
+            else:
+                color, icon = "yellow", "📌"
 
-# --- MÓDULOS DE FUNCIONALIDADES ---
+            if len(path) > 40:
+                path = "..." + path[-37:]
+
+            right_info += f"[{color}]{icon} {path}[/{color}]\n"
+
+        if len(changed_files) > 6:
+            right_info += f"[dim]... e mais {len(changed_files) - 6} arquivo(s) modificado(s).[/dim]\n"
+    else:
+        right_info += "[dim]✨ Tudo sincronizado. Nenhuma modificação pendente.[/dim]\n"
+
+    table = Table(show_header=False, expand=True, box=None, padding=(1, 2))
+    table.add_column("Esquerda", justify="center", ratio=1)
+    table.add_column("Direita", justify="left", ratio=1)
+    table.add_row(left_info, right_info)
+
+    panel = Panel(
+        table,
+        title="[dim] GitFlowy v0.2.0 [/dim]",
+        title_align="left",
+        box=box.ROUNDED,
+        border_style="#00CED1",
+        subtitle="[dim]Autor: José Pires O.N.[/dim]",
+        subtitle_align="right"
+    )
+    
+    console.print()
+    console.print(panel)
+    console.print("\n[dim]" + "─" * 80 + "[/dim]\n")
+
 
 def handle_commit():
     """Fluxo de commit (Adicionar Tudo vs Selecionar)"""
@@ -92,7 +197,6 @@ def handle_commit():
         questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
         return
 
-    # 1. Modo de Staging
     add_mode = questionary.select(
         "Como deseja adicionar os arquivos?",
         choices=[
@@ -107,21 +211,19 @@ def handle_commit():
 
     selected_files = []
     if "TUDO" in add_mode:
-        selected_files = ["."] # Representa todos os arquivos
+        selected_files = ["."]
     else:
-        # Pega apenas os nomes dos arquivos, tirando o prefixo de status
         file_choices = [f[3:] for f in changed_files]
         selected_files = questionary.checkbox(
             "Selecione os arquivos para o commit:",
             choices=file_choices,
-            style=questionary.Style([('highlighted', 'fg:#00ffff bold')])
+            style=questionary.Style([('highlighted', 'fg:#00CED1 bold')])
         ).ask()
 
         if not selected_files:
             console.print("[yellow]Nenhum arquivo selecionado.[/yellow]")
             return
 
-    # 2. Tipo de Commit (Conventional Commits)
     commit_type = questionary.select(
         "Qual é o tipo da sua alteração?",
         choices=[
@@ -138,13 +240,12 @@ def handle_commit():
     if not commit_type: return
     commit_tag = commit_type.split(":")[0]
 
-    # 3. Escopo e Mensagem
     commit_scope = questionary.text("Qual o escopo? (Opcional, ex: auth, ui):").ask()
     commit_message = questionary.text("Descreva a alteração:").ask()
 
     if not commit_message:
         console.print("[bold red]❌ A mensagem é obrigatória.[/bold red]")
-        questionary.press_any_key_to_continue().ask()
+        questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
         return
 
     scope_str = f"({commit_scope})" if commit_scope else ""
@@ -154,13 +255,12 @@ def handle_commit():
     if not questionary.confirm("Confirmar commit?").ask():
         return
 
-    # 4. Execução
     with console.status("[bold cyan]Commitando...[/bold cyan]", spinner="dots"):
         if selected_files == ["."]:
             run_git(["add", "."])
         else:
-            for file in selected_files:
-                run_git(["add", file])
+            # Ao invés de loop for lento, passa a lista toda pro subprocess
+            run_git(["add", "--"] + selected_files)
         
         success, err = run_git(["commit", "-m", final_message])
 
@@ -189,38 +289,37 @@ def handle_branches():
         return
 
     if "Trocar" in action:
-        # Remove a branch atual da lista de opções de troca
         options = [b for b in branches if b != current_branch]
         if not options:
             console.print("[yellow]Não há outras branches para trocar.[/yellow]")
-            questionary.press_any_key_to_continue().ask()
+            questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
             return
             
         target = questionary.select("Para qual branch deseja mudar?", choices=options).ask()
         if target:
             success, msg = run_git(["checkout", target])
-            console.print(f"[green]Mudou para a branch '{target}'[/green]" if success else f"[red]Erro: {msg}[/red]")
-            questionary.press_any_key_to_continue().ask()
+            console.print(f"[green]Mudou para a branch '{target}'[/green]" if success else f"\n[red]Erro:\n{msg}[/red]")
+            questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
 
     elif "Criar" in action:
         new_branch = questionary.text("Nome da nova branch:").ask()
         if new_branch:
             success, msg = run_git(["checkout", "-b", new_branch])
             console.print(f"[green]Branch '{new_branch}' criada e ativada![/green]" if success else f"[red]Erro: {msg}[/red]")
-            questionary.press_any_key_to_continue().ask()
+            questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
             
     elif "Deletar" in action:
-        options = [b for b in branches if b != current_branch and b != "main" and b != "master"]
+        options = [b for b in branches if b != current_branch and b not in ["main", "master"]]
         if not options:
-            console.print("[yellow]Não há branches seguras para deletar.[/yellow]")
-            questionary.press_any_key_to_continue().ask()
+            console.print("[yellow]Não há branches seguras para deletar (não é possível deletar a branch atual ou main/master).[/yellow]")
+            questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
             return
             
         target = questionary.select("Qual branch deseja deletar?", choices=options).ask()
         if target and questionary.confirm(f"Tem certeza que deseja deletar '{target}'?").ask():
             success, msg = run_git(["branch", "-D", target])
             console.print(f"[green]Branch '{target}' deletada![/green]" if success else f"[red]Erro: {msg}[/red]")
-            questionary.press_any_key_to_continue().ask()
+            questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
 
 def handle_sync():
     """Faz Push e Pull do repositório"""
@@ -235,7 +334,6 @@ def handle_sync():
     
     if "Push" in action:
         with console.status(f"[bold cyan]Enviando branch {current_branch} para o remote...[/bold cyan]"):
-            # Tenta um push simples. Se falhar por falta de upstream, tenta definir.
             success, msg = run_git(["push"])
             if not success and "set-upstream" in msg:
                 success, msg = run_git(["push", "--set-upstream", "origin", current_branch])
@@ -258,10 +356,11 @@ def handle_sync():
 
 def handle_history():
     """Mostra o histórico recente de commits em uma tabela bonita."""
-    success, output = run_git(["log", "-n", "10", "--pretty=format:%h|%s|%ar|%an"])
+    # CORREÇÃO: Usando um delimitador complexo '<||>' pois um commit pode possuir '|' no título
+    success, output = run_git(["log", "-n", "10", "--pretty=format:%h<||>%s<||>%ar<||>%an"])
     if not success or not output:
         console.print("[yellow]Nenhum histórico encontrado.[/yellow]")
-        questionary.press_any_key_to_continue().ask()
+        questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
         return
 
     table = Table(title="Histórico Recente (Últimos 10 commits)")
@@ -271,7 +370,7 @@ def handle_history():
     table.add_column("Autor", style="magenta")
 
     for line in output.split("\n"):
-        parts = line.split("|")
+        parts = line.split("<||>")
         if len(parts) == 4:
             table.add_row(parts[0], parts[1], parts[2], parts[3])
     
@@ -356,7 +455,7 @@ def main():
         show_header()
         
         choice = questionary.select(
-            "O que você deseja fazer?",
+            "Execute uma ação:",
             choices=[
                 "📝 Fazer Commit",
                 "🌿 Gerenciar Branches",
@@ -365,8 +464,7 @@ def main():
                 "📦 Guarda-volumes (Stash)",
                 "↩️  Desfazer / Reverter",
                 "🚪 Sair"
-            ],
-            style=questionary.Style([('highlighted', 'fg:#00ffff bold')])
+            ]
         ).ask()
 
         if choice == "📝 Fazer Commit":
@@ -382,7 +480,7 @@ def main():
         elif choice == "↩️  Desfazer / Reverter":
             handle_undo()
         elif choice == "🚪 Sair" or not choice:
-            console.print("\n[dim]Até logo! Continue commitando com estilo. 🌊[/dim]")
+            console.print("\n[dim]Até logo! Continue mergulhando no código. 🌊[/dim]")
             break
 
 if __name__ == "__main__":
