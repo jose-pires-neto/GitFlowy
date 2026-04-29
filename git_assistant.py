@@ -72,7 +72,14 @@ def show_header():
     # Mostra a branch atual
     current_branch, _ = get_branches()
     if current_branch:
-        console.print(f"📍 Branch atual: [bold magenta]{current_branch}[/bold magenta]\n")
+        console.print(f"📍 Branch atual: [bold magenta]{current_branch}[/bold magenta]")
+
+    # Mostra status rápido
+    files = get_changed_files()
+    if files:
+        console.print(f"📄 Arquivos com alterações: [bold yellow]{len(files)}[/bold yellow]\n")
+    else:
+        console.print("✨ [dim]Nenhuma alteração pendente.[/dim]\n")
 
 # --- MÓDULOS DE FUNCIONALIDADES ---
 
@@ -249,6 +256,96 @@ def handle_sync():
     questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
 
 
+def handle_history():
+    """Mostra o histórico recente de commits em uma tabela bonita."""
+    success, output = run_git(["log", "-n", "10", "--pretty=format:%h|%s|%ar|%an"])
+    if not success or not output:
+        console.print("[yellow]Nenhum histórico encontrado.[/yellow]")
+        questionary.press_any_key_to_continue().ask()
+        return
+
+    table = Table(title="Histórico Recente (Últimos 10 commits)")
+    table.add_column("Hash", style="cyan", no_wrap=True)
+    table.add_column("Mensagem", style="white")
+    table.add_column("Tempo", style="green")
+    table.add_column("Autor", style="magenta")
+
+    for line in output.split("\n"):
+        parts = line.split("|")
+        if len(parts) == 4:
+            table.add_row(parts[0], parts[1], parts[2], parts[3])
+    
+    console.print(table)
+    questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
+
+
+def handle_stash():
+    """Gerencia o stash (área de rascunho)."""
+    action = questionary.select(
+        "Guarda-volumes (Stash)",
+        choices=[
+            "📦 Guardar alterações (Stash Save)",
+            "📥 Recuperar últimas alterações (Stash Pop)",
+            "📋 Listar itens guardados",
+            "🗑️  Limpar tudo (Stash Clear)",
+            "Voltar"
+        ]
+    ).ask()
+
+    if not action or action == "Voltar": return
+
+    if "Guardar" in action:
+        msg = questionary.text("Nome/Mensagem para esse rascunho (opcional):").ask()
+        args = ["stash", "push", "-m", msg] if msg else ["stash"]
+        success, out = run_git(args)
+        console.print(f"[green]{out}[/green]" if success else f"[red]Erro: {out}[/red]")
+        
+    elif "Recuperar" in action:
+        success, out = run_git(["stash", "pop"])
+        console.print(f"[green]{out}[/green]" if success else f"[red]Erro: {out}[/red]")
+        
+    elif "Listar" in action:
+        success, out = run_git(["stash", "list"])
+        if out: console.print(f"[cyan]{out}[/cyan]")
+        else: console.print("[yellow]Guarda-volumes está vazio.[/yellow]")
+        
+    elif "Limpar" in action:
+        if questionary.confirm("Tem certeza? Isso apagará todos os stashes!").ask():
+            success, out = run_git(["stash", "clear"])
+            console.print("[green]Stash limpo com sucesso![/green]" if success else f"[red]Erro: {out}[/red]")
+
+    questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
+
+
+def handle_undo():
+    """Ferramentas para desfazer ações (Reset, Restore)."""
+    action = questionary.select(
+        "O que você deseja desfazer?",
+        choices=[
+            "↩️  Desfazer último commit (Mantendo os arquivos)",
+            "🔥 Descartar TODAS as alterações não commitadas",
+            "Voltar"
+        ]
+    ).ask()
+
+    if not action or action == "Voltar": return
+
+    if "Desfazer último commit" in action:
+        if questionary.confirm("Isso vai apagar o último commit do histórico, mas seus arquivos continuarão modificados. Continuar?").ask():
+            success, out = run_git(["reset", "--soft", "HEAD~1"])
+            console.print("[green]Último commit desfeito! Arquivos mantidos na sua máquina.[/green]" if success else f"[red]Erro: {out}[/red]")
+    elif "Descartar TODAS" in action:
+        if questionary.confirm("PERIGO: Isso apagará todas as modificações atuais de forma IRREVERSÍVEL. Continuar?").ask():
+            success1, out1 = run_git(["reset", "--hard"])
+            success2, out2 = run_git(["clean", "-fd"])
+            if success1 and success2:
+                console.print("[green]Árvore de trabalho limpa. Todas as alterações foram descartadas.[/green]")
+            else:
+                console.print(f"[red]Erro ao limpar:\n{out1}\n{out2}[/red]")
+
+    questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
+
+
 def main():
     if not is_git_repo():
         console.print("[bold red]❌ Esta pasta não é um repositório Git.[/bold red]")
@@ -264,6 +361,9 @@ def main():
                 "📝 Fazer Commit",
                 "🌿 Gerenciar Branches",
                 "🔄 Sincronizar (Push/Pull)",
+                "📜 Ver Histórico (Log)",
+                "📦 Guarda-volumes (Stash)",
+                "↩️  Desfazer / Reverter",
                 "🚪 Sair"
             ],
             style=questionary.Style([('highlighted', 'fg:#00ffff bold')])
@@ -275,6 +375,12 @@ def main():
             handle_branches()
         elif choice == "🔄 Sincronizar (Push/Pull)":
             handle_sync()
+        elif choice == "📜 Ver Histórico (Log)":
+            handle_history()
+        elif choice == "📦 Guarda-volumes (Stash)":
+            handle_stash()
+        elif choice == "↩️  Desfazer / Reverter":
+            handle_undo()
         elif choice == "🚪 Sair" or not choice:
             console.print("\n[dim]Até logo! Continue commitando com estilo. 🌊[/dim]")
             break

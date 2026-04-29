@@ -31,6 +31,9 @@ Trabalhar com Git pode ser repetitivo e propenso a erros de digitação ou padro
 - [x] **Commits Semânticos**: Menu guiado (tipo, escopo, mensagem).
 - [x] **Branch Manager**: Interface visual para trocar, criar e deletar branches locais.
 - [x] **Sincronização Fácil**: Opções de Push e Pull simplificadas com indicadores de carregamento.
+- [x] **Tabela de Histórico**: Visualize os últimos commits formatados visualmente (Hash, Msg, Tempo, Autor).
+- [x] **Guarda-Volumes (Stash)**: Guarde ou recupere alterações inacabadas para transitar entre branches.
+- [x] **Botão de Pânico (Undo)**: Opções guiadas para desfazer o último commit ou limpar a árvore de trabalho completamente.
 
 ---
 
@@ -80,7 +83,10 @@ Um menu interativo será aberto. Use as setas do teclado para navegar e o Enter 
 1. **Fazer Commit**
 2. **Gerenciar Branches**
 3. **Sincronizar (Push/Pull)**
-4. **Sair**
+4. **Ver Histórico (Log)**
+5. **Guarda-volumes (Stash)**
+6. **Desfazer / Reverter**
+7. **Sair**
 
 ---
 
