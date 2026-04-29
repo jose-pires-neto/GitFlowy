@@ -1,6 +1,7 @@
 import os
 import subprocess
 import sys
+import shutil
 from gitflowy.theme import console
 
 def run_git(args, exit_on_error=False):
@@ -20,6 +21,26 @@ def run_git(args, exit_on_error=False):
         if exit_on_error:
             console.print(f"[bold red]Erro crítico no Git:[/bold red] {error_msg}")
             sys.exit(1)
+        return False, error_msg
+
+def has_gh_cli():
+    """Verifica se o GitHub CLI (gh) está instalado."""
+    return shutil.which("gh") is not None
+
+def run_gh(args):
+    """Executa um comando do GitHub CLI."""
+    try:
+        result = subprocess.run(
+            ["gh"] + args,
+            capture_output=True,
+            text=True,
+            encoding='utf-8',
+            errors='replace',
+            check=True
+        )
+        return True, result.stdout.strip()
+    except subprocess.CalledProcessError as e:
+        error_msg = e.stderr.strip() if e.stderr else (e.stdout.strip() if e.stdout else str(e))
         return False, error_msg
 
 def is_git_repo():

@@ -5,7 +5,7 @@ from rich import box
 import questionary
 
 from gitflowy.theme import console
-from gitflowy.core import get_changed_files, get_branches, run_git
+from gitflowy.core import get_changed_files, get_branches, run_git, has_gh_cli, run_gh
 from gitflowy.ui import show_header
 
 def handle_status():
@@ -227,6 +227,30 @@ def handle_sync():
         
         if success:
             console.print("[bold green]✅ Push realizado com sucesso![/bold green]")
+            
+            # --- INTEGRAÇÃO GITHUB CLI ---
+            if has_gh_cli():
+                console.print("\n[dim]GitHub CLI (gh) detectado no sistema.[/dim]")
+                if questionary.confirm("🐙 Deseja abrir um Pull Request para esta branch agora?").ask():
+                    # Obtém a última mensagem de commit para sugerir como título
+                    succ_log, last_commit = run_git(["log", "-1", "--pretty=format:%s"])
+                    default_title = last_commit if succ_log else current_branch
+                    
+                    pr_title = questionary.text("Título do Pull Request:", default=default_title).ask()
+                    if pr_title:
+                        pr_body = questionary.text("Descrição (opcional):").ask()
+                        
+                        with console.status("[bold cyan]Criando Pull Request...[/bold cyan]", spinner="dots"):
+                            args = ["pr", "create", "--title", pr_title, "--body", pr_body if pr_body else ""]
+                            succ_pr, out_pr = run_gh(args)
+                            
+                        if succ_pr:
+                            console.print(f"[bold green]🎉 Pull Request criado com sucesso![/bold green]")
+                            console.print(f"🔗 [link={out_pr}]{out_pr}[/link]")
+                        else:
+                            console.print(f"[bold red]❌ Erro ao criar o Pull Request:[/bold red]\n{out_pr}")
+            # -----------------------------
+            
         else:
             console.print(f"[bold red]❌ Erro no Push:[/bold red]\n{msg}")
             
@@ -312,6 +336,7 @@ def handle_undo():
         "O que você deseja desfazer?",
         choices=[
             "↩️  Desfazer último commit (Mantendo os arquivos)",
+            "⏪ Reverter commit específico (Git Revert)",
             "🔥 Descartar TODAS as alterações não commitadas",
             "Voltar"
         ]
@@ -323,6 +348,41 @@ def handle_undo():
         if questionary.confirm("Isso vai apagar o último commit do histórico, mas seus arquivos continuarão modificados. Continuar?").ask():
             success, out = run_git(["reset", "--soft", "HEAD~1"])
             console.print("[green]Último commit desfeito! Arquivos mantidos na sua máquina.[/green]" if success else f"[red]Erro: {out}[/red]")
+            
+    elif "Reverter commit" in action:
+        success, log_out = run_git(["log", "-n", "15", "--pretty=format:%h<||>%s<||>%ar"])
+        if not success or not log_out:
+            console.print("[yellow]Nenhum histórico encontrado para reverter.[/yellow]")
+            questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
+            return
+            
+        commits = []
+        for line in log_out.split('\n'):
+            parts = line.split('<||>')
+            if len(parts) == 3:
+                hash_id, msg, time_ago = parts
+                commits.append(questionary.Choice(title=f"{hash_id} - {msg} ({time_ago})", value=hash_id))
+                
+        if not commits: return
+        
+        target_commit = questionary.select(
+            "Selecione qual commit você deseja REVERTER:",
+            choices=commits + ["❌ Cancelar"]
+        ).ask()
+        
+        if not target_commit or target_commit == "❌ Cancelar":
+            return
+            
+        with console.status(f"[bold cyan]Revertendo commit {target_commit}...[/bold cyan]", spinner="dots"):
+            # --no-edit impede que abra o editor do vim/nano para a mensagem do revert
+            success, out = run_git(["revert", "--no-edit", target_commit])
+            
+        if success:
+            console.print(f"[bold green]✅ Commit {target_commit} revertido com sucesso![/bold green]")
+        else:
+            console.print(f"[bold red]❌ Conflito ao reverter o commit {target_commit}:[/bold red]")
+            console.print("[yellow]Você precisará resolver os conflitos listados acima manualmente e fazer o commit do revert.[/yellow]")
+
     elif "Descartar TODAS" in action:
         if questionary.confirm("PERIGO: Isso apagará todas as modificações atuais de forma IRREVERSÍVEL. Continuar?").ask():
             success1, out1 = run_git(["reset", "--hard"])
