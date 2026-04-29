@@ -15,20 +15,25 @@ Diga adeus ao `git add .` acidental e à dificuldade de lembrar a sintaxe dos *C
 
 Trabalhar com Git pode ser repetitivo e propenso a erros de digitação ou padronização. O GitFlowy resolve isso oferecendo:
 
-*   **Staging Interativo:** Selecione exatamente quais arquivos deseja commitar usando uma interface visual.
-*   **Padronização Automática:** Segue rigorosamente os padrões de [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
-*   **Interface Premium:** Experiência rica no terminal com cores, painéis e feedback visual instantâneo.
+*   **Tudo em Um:** Commits, Branches e Sincronização em um único menu interativo.
+*   **Padronização Automática:** Segue rigorosamente os padrões de [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), com opção de adicionar tudo (git add .) ou escolher arquivos específicos.
+*   **Gestão de Branches:** Crie, troque e delete branches sem precisar lembrar das flags do Git.
 *   **Segurança:** Validações integradas para garantir que você está em um repositório Git e possui alterações pendentes.
+*   **Tratamento Automático:** O comando de Push já lida automaticamente com branches novas que precisam de `set-upstream`.
+*   **Visualmente Agradável:** Interface rica no terminal com cores, painéis e feedback visual instantâneo.
 
 ---
 
 ## ✨ Funcionalidades
 
-- [x] **Seleção de Arquivos:** Interface de checklist para `git add`.
-- [x] **Menu Semântico:** Escolha entre `feat`, `fix`, `docs`, `style`, `refactor`, etc.
-- [x] **Escopo Opcional:** Adicione contexto ao seu commit (ex: `auth`, `ui`).
-- [x] **Mensagem Guiada:** Garante que a descrição seja preenchida.
-- [x] **Execução Automática:** Faz o `add` e o `commit` em um único fluxo.
+- [x] **Painel Interativo**: Menu principal contínuo para gerenciar o repo.
+- [x] **Smart Staging**: Opção de Adicionar TUDO ou selecionar arquivos em formato checklist.
+- [x] **Commits Semânticos**: Menu guiado (tipo, escopo, mensagem).
+- [x] **Branch Manager**: Interface visual para trocar, criar e deletar branches locais.
+- [x] **Sincronização Fácil**: Opções de Push e Pull simplificadas com indicadores de carregamento.
+- [x] **Tabela de Histórico**: Visualize os últimos commits formatados visualmente (Hash, Msg, Tempo, Autor).
+- [x] **Guarda-Volumes (Stash)**: Guarde ou recupere alterações inacabadas para transitar entre branches.
+- [x] **Botão de Pânico (Undo)**: Opções guiadas para desfazer o último commit ou limpar a árvore de trabalho completamente.
 
 ---
 
@@ -73,12 +78,15 @@ pip uninstall gitflowy
 gflow
 ```
 
-### O Fluxo de Trabalho:
-1.  **Stage:** Use a `Barra de Espaço` para selecionar arquivos e `Enter` para confirmar.
-2.  **Tipo:** Escolha a categoria da alteração (✨ feature, 🐛 fix, etc).
-3.  **Escopo:** (Opcional) Defina a área afetada.
-4.  **Mensagem:** Escreva uma descrição curta e clara.
-5.  **Confirmação:** Revise a mensagem gerada e confirme.
+Um menu interativo será aberto. Use as setas do teclado para navegar e o Enter para selecionar a ação desejada:
+
+1. **Fazer Commit**
+2. **Gerenciar Branches**
+3. **Sincronizar (Push/Pull)**
+4. **Ver Histórico (Log)**
+5. **Guarda-volumes (Stash)**
+6. **Desfazer / Reverter**
+7. **Sair**
 
 ---
 
