@@ -5,7 +5,8 @@ from gitflowy.core import is_git_repo
 from gitflowy.ui import show_header, grid_menu
 from gitflowy.handlers import (
     handle_status, handle_commit, handle_branches,
-    handle_sync, handle_history, handle_stash, handle_undo, handle_tags
+    handle_sync, handle_history, handle_stash, handle_undo, handle_tags,
+    handle_pull_requests
 )
 
 def main():
@@ -14,7 +15,7 @@ def main():
         console.print("Rode [yellow]git init[/yellow] primeiro!")
         sys.exit(1)
 
-    # Organização das opções na ordem de uso para formar o Grid 3x3 perfeito
+    # Organização das opções na ordem de uso para formar o Grid 3x4
     options = [
         "📝 Fazer Commit",
         "📊 Status Completo",
@@ -24,6 +25,9 @@ def main():
         "🏷️  Tags (Releases)",
         "📦 Stash (Guarda)",
         "↩️  Reverter",
+        "🐙 Pull Requests",
+        " ", # Espaço vazio para manter o grid simétrico 3x4
+        " ", # Espaço vazio para manter o grid simétrico 3x4
         "🚪 Sair"
     ]
 
@@ -47,6 +51,8 @@ def main():
             handle_stash()
         elif choice == "↩️  Reverter":
             handle_undo()
+        elif choice == "🐙 Pull Requests":
+            handle_pull_requests()
         elif choice == "🚪 Sair" or not choice:
             console.print("\n[dim]Até logo! Continue mergulhando no código. 🌊[/dim]")
             break

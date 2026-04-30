@@ -26,13 +26,14 @@ Trabalhar com Git pode ser repetitivo e propenso a erros de digitação ou padro
 
 ## ✨ Funcionalidades
 
-- [x] **Painel Interativo 3x3**: Menu principal super responsivo em grade, com navegação por setas do teclado.
+- [x] **Painel Interativo 3x4**: Menu principal super responsivo em grade, com navegação por setas do teclado.
 - [x] **Dashboard de Bordo**: Painel dinâmico que não polui seu histórico do terminal, mostrando status, logs e ferramentas em uma tela estática.
 - [x] **Smart Staging**: Opção de Adicionar TUDO ou selecionar arquivos em formato checklist interativo.
 - [x] **Commits Semânticos**: Menu guiado (tipo, escopo, mensagem).
 - [x] **Branch Manager**: Interface visual para trocar, criar e deletar branches locais.
 - [x] **Tag Manager**: Liste, crie (vincule releases) e delete tags locais e remotas com facilidade.
-- [x] **Sincronização Fácil (com GitHub CLI)**: Push e Pull simplificados. Se você tiver a CLI do GitHub (`gh`) instalada, o GitFlowy se oferece para abrir um Pull Request logo após o Push!
+- [x] **Sincronização Fácil**: Push e Pull simplificados.
+- [x] **Gerenciamento de Pull Requests (Via GitHub CLI)**: Crie PRs na hora do push, ou gerencie PRs abertos (listar, mergear e fechar) diretamente do terminal.
 - [x] **Tabela de Histórico**: Visualize os últimos commits formatados elegantemente no painel de bordo.
 - [x] **Botão de Pânico Avançado**: Escolha entre um `git reset` (preserva arquivos), um `git revert` selecionado em uma lista visual de commits, ou descarte tudo caso o projeto pegue fogo.
 - [x] **Guarda-Volumes (Stash)**: Guarde ou recupere alterações inacabadas para transitar entre branches.
@@ -41,23 +42,25 @@ Trabalhar com Git pode ser repetitivo e propenso a erros de digitação ou padro
 
 ## 📦 Instalação
 
-### Via pipx (Recomendado)
-O `pipx` é a melhor forma de instalar ferramentas CLI de forma isolada e global.
+A maneira mais fácil e recomendada de instalar o GitFlowy é usar o nosso instalador automático. Ele identifica seu sistema operacional, checa os requisitos e faz tudo por você!
 
+1. Faça o clone ou baixe o arquivo `install.py` deste repositório.
+2. No seu terminal, rode o comando:
+```bash
+python install.py
+```
+
+Isso instalará o GitFlowy isoladamente no seu sistema.
+
+### Instalação Manual (Avançado)
+Se você preferir instalar manualmente, use o `pipx`:
 ```bash
 pipx install git+https://github.com/jose-pires-neto/GitFlowy.git
 ```
 
-### Via pip
-```bash
-pip install git+https://github.com/jose-pires-neto/GitFlowy.git
-```
-
 ### 🗑️ Desinstalação
 
-Se você precisar remover o GitFlowy, utilize o comando correspondente ao método de instalação:
-
-**Se instalou via pipx:**
+Se você precisar remover o GitFlowy:
 ```bash
 pipx uninstall gitflowy
 ```
@@ -80,17 +83,18 @@ pip uninstall gitflowy
 gflow
 ```
 
-Um belíssimo Dashboard 3x3 será aberto. Use as **setas do teclado** para deslizar pelas opções e o **Enter** para selecionar a ação desejada:
+Um belíssimo Dashboard 3x4 será aberto. Use as **setas do teclado** para deslizar pelas opções e o **Enter** para selecionar a ação desejada:
 
 1. **📝 Fazer Commit**
 2. **📊 Status Completo**
-3. **🔄 Sync (Push/Pull/PR)**
+3. **🔄 Sync (Push/Pull)**
 4. **🌿 Branches**
 5. **📜 Histórico (Log)**
 6. **🏷️ Tags (Releases)**
 7. **📦 Stash (Guarda)**
 8. **↩️ Reverter**
-9. **🚪 Sair**
+9. **🐙 Pull Requests**
+10. **🚪 Sair**
 
 ---
 

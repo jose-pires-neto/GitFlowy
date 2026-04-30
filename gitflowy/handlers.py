@@ -6,7 +6,7 @@ from rich import box
 import questionary
 
 from gitflowy.theme import console
-from gitflowy.core import get_changed_files, get_branches, get_tags, run_git, has_gh_cli, run_gh
+from gitflowy.core import get_changed_files, get_branches, get_tags, run_git, has_gh_cli, run_gh, check_gh_auth, get_gh_executable
 from gitflowy.ui import show_header
 
 def handle_status():
@@ -261,23 +261,32 @@ def handle_sync():
             if has_gh_cli():
                 console.print("\n[dim]GitHub CLI (gh) detectado no sistema.[/dim]")
                 if questionary.confirm("🐙 Deseja abrir um Pull Request para esta branch agora?").ask():
-                    # Obtém a última mensagem de commit para sugerir como título
-                    succ_log, last_commit = run_git(["log", "-1", "--pretty=format:%s"])
-                    default_title = last_commit if succ_log else current_branch
+                    if not check_gh_auth():
+                        console.print("[yellow]⚠️  Você precisa autenticar o GitHub CLI primeiro.[/yellow]")
+                        if questionary.confirm("Deseja fazer login no GitHub agora?").ask():
+                            import subprocess
+                            subprocess.run([get_gh_executable(), "auth", "login"])
                     
-                    pr_title = questionary.text("Título do Pull Request:", default=default_title).ask()
-                    if pr_title:
-                        pr_body = questionary.text("Descrição (opcional):").ask()
+                    if check_gh_auth():
+                        # Obtém a última mensagem de commit para sugerir como título
+                        succ_log, last_commit = run_git(["log", "-1", "--pretty=format:%s"])
+                        default_title = last_commit if succ_log else current_branch
                         
-                        with console.status("[bold cyan]Criando Pull Request...[/bold cyan]", spinner="dots"):
-                            args = ["pr", "create", "--title", pr_title, "--body", pr_body if pr_body else ""]
-                            succ_pr, out_pr = run_gh(args)
+                        pr_title = questionary.text("Título do Pull Request:", default=default_title).ask()
+                        if pr_title:
+                            pr_body = questionary.text("Descrição (opcional):").ask()
                             
-                        if succ_pr:
-                            console.print(f"[bold green]🎉 Pull Request criado com sucesso![/bold green]")
-                            console.print(f"🔗 [link={out_pr}]{out_pr}[/link]")
-                        else:
-                            console.print(f"[bold red]❌ Erro ao criar o Pull Request:[/bold red]\n{out_pr}")
+                            with console.status("[bold cyan]Criando Pull Request...[/bold cyan]", spinner="dots"):
+                                args = ["pr", "create", "--title", pr_title, "--body", pr_body if pr_body else ""]
+                                succ_pr, out_pr = run_gh(args)
+                                
+                            if succ_pr:
+                                console.print(f"[bold green]🎉 Pull Request criado com sucesso![/bold green]")
+                                console.print(f"🔗 [link={out_pr}]{out_pr}[/link]")
+                            else:
+                                console.print(f"[bold red]❌ Erro ao criar o Pull Request:[/bold red]\n{out_pr}")
+                    else:
+                        console.print("[red]❌ Operação cancelada pois o GitHub não está autenticado.[/red]")
             # -----------------------------
             
         else:
@@ -519,3 +528,155 @@ def handle_undo():
                 console.print(f"[red]Erro ao limpar:\n{out1}\n{out2}[/red]")
 
     questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
+
+def handle_pull_requests():
+    """Gerenciamento de Pull Requests via GitHub CLI"""
+    import json
+    import subprocess
+    
+    if not has_gh_cli():
+        show_header("Pull Requests", "Integração com GitHub")
+        console.print("[bold red]❌ O GitHub CLI (gh) não foi encontrado no seu sistema.[/bold red]")
+        console.print("Para gerenciar Pull Requests, instale o gh: [link=https://cli.github.com/]https://cli.github.com/[/link]")
+        questionary.press_any_key_to_continue("\nPressione qualquer tecla para voltar...").ask()
+        return
+
+    if not check_gh_auth():
+        show_header("Pull Requests", "Autenticação Necessária")
+        console.print("[yellow]⚠️  O GitHub CLI (gh) está instalado, mas você não está logado na sua conta.[/yellow]")
+        if questionary.confirm("Deseja fazer o login no GitHub agora?").ask():
+            gh_exe = get_gh_executable()
+            # Inicia o modo interativo do gh auth login nativamente no terminal do usuário
+            subprocess.run([gh_exe, "auth", "login"])
+            
+            if not check_gh_auth():
+                console.print("[red]\n❌ Autenticação não concluída.[/red]")
+                questionary.press_any_key_to_continue("Pressione qualquer tecla para voltar...").ask()
+                return
+        else:
+            return
+
+    while True:
+        show_header("Gerenciar Pull Requests", "Crie, avalie e faça merge de PRs no GitHub")
+        
+        action = questionary.select(
+            "O que deseja fazer?",
+            choices=[
+                "➕ Criar Novo Pull Request",
+                "👀 Listar e Gerenciar PRs Abertos",
+                "Voltar"
+            ]
+        ).ask()
+        
+        if not action or action == "Voltar":
+            break
+            
+        if "Criar Novo" in action:
+            current_branch, _ = get_branches()
+            succ_log, last_commit = run_git(["log", "-1", "--pretty=format:%s"])
+            default_title = last_commit if succ_log else current_branch
+            
+            pr_title = questionary.text("Título do Pull Request:", default=default_title).ask()
+            if pr_title:
+                pr_body = questionary.text("Descrição (opcional):").ask()
+                
+                with console.status("[bold cyan]Criando Pull Request...[/bold cyan]", spinner="dots"):
+                    args = ["pr", "create", "--title", pr_title, "--body", pr_body if pr_body else ""]
+                    succ_pr, out_pr = run_gh(args)
+                    
+                if succ_pr:
+                    console.print(f"[bold green]🎉 Pull Request criado com sucesso![/bold green]")
+                    console.print(f"🔗 [link={out_pr.strip()}]{out_pr.strip()}[/link]")
+                else:
+                    console.print(f"[bold red]❌ Erro ao criar o Pull Request:[/bold red]\n{out_pr}")
+                questionary.press_any_key_to_continue("\nPressione qualquer tecla para continuar...").ask()
+                
+        elif "Listar e Gerenciar" in action:
+            with console.status("[bold cyan]Buscando Pull Requests abertos...[/bold cyan]", spinner="dots"):
+                succ_list, out_list = run_gh(["pr", "list", "--json", "number,title,author,url", "--limit", "30"])
+                
+            if not succ_list:
+                console.print(f"[bold red]❌ Erro ao buscar PRs:[/bold red]\n{out_list}")
+                questionary.press_any_key_to_continue("\nPressione qualquer tecla para continuar...").ask()
+                continue
+                
+            try:
+                prs = json.loads(out_list)
+            except json.JSONDecodeError:
+                prs = []
+                
+            if not prs:
+                console.print("[yellow]Nenhum Pull Request aberto encontrado.[/yellow]")
+                questionary.press_any_key_to_continue("\nPressione qualquer tecla para continuar...").ask()
+                continue
+                
+            table = Table(title="Pull Requests Abertos", expand=True)
+            table.add_column("ID", style="cyan", justify="right")
+            table.add_column("Título", style="white")
+            table.add_column("Autor", style="magenta")
+            
+            choices = []
+            for pr in prs:
+                num_str = f"#{pr['number']}"
+                table.add_row(num_str, pr['title'], pr['author']['login'])
+                choices.append(questionary.Choice(title=f"{num_str} - {pr['title']} ({pr['author']['login']})", value=pr))
+                
+            choices.append(questionary.Choice(title="❌ Voltar", value=None))
+            
+            show_header("Pull Requests Abertos", "Selecione um PR para gerenciar", custom_display=table)
+            
+            selected_pr = questionary.select(
+                "Qual Pull Request deseja gerenciar?",
+                choices=choices
+            ).ask()
+            
+            if not selected_pr:
+                continue
+                
+            pr_action = questionary.select(
+                f"Gerenciando PR #{selected_pr['number']} ({selected_pr['title']})",
+                choices=[
+                    "✅ Fazer Merge do PR",
+                    "❌ Fechar PR (Sem merge)",
+                    "🌐 Abrir no Navegador",
+                    "Voltar"
+                ]
+            ).ask()
+            
+            if not pr_action or pr_action == "Voltar":
+                continue
+                
+            if "Fazer Merge" in pr_action:
+                merge_type = questionary.select(
+                    "Qual método de merge deseja usar?",
+                    choices=[
+                        questionary.Choice(title="Merge (Create a merge commit)", value="--merge"),
+                        questionary.Choice(title="Squash (Squash and merge)", value="--squash"),
+                        questionary.Choice(title="Rebase (Rebase and merge)", value="--rebase")
+                    ]
+                ).ask()
+                
+                if merge_type and questionary.confirm(f"Confirma o merge do PR #{selected_pr['number']}?").ask():
+                    with console.status("[bold cyan]Realizando merge...[/bold cyan]", spinner="dots"):
+                        succ_merge, out_merge = run_gh(["pr", "merge", str(selected_pr['number']), merge_type, "--delete-branch"])
+                        
+                    if succ_merge:
+                        console.print(f"[bold green]✅ Pull Request #{selected_pr['number']} mergeado com sucesso![/bold green]")
+                    else:
+                        console.print(f"[bold red]❌ Erro ao realizar merge:[/bold red]\n{out_merge}")
+                        
+            elif "Fechar PR" in pr_action:
+                if questionary.confirm(f"Tem certeza que deseja FECHAR o PR #{selected_pr['number']} sem fazer merge?").ask():
+                    with console.status("[bold cyan]Fechando PR...[/bold cyan]", spinner="dots"):
+                        succ_close, out_close = run_gh(["pr", "close", str(selected_pr['number'])])
+                    if succ_close:
+                        console.print(f"[bold green]✅ Pull Request #{selected_pr['number']} fechado com sucesso![/bold green]")
+                    else:
+                        console.print(f"[bold red]❌ Erro ao fechar PR:[/bold red]\n{out_close}")
+                        
+            elif "Abrir no Navegador" in pr_action:
+                import webbrowser
+                webbrowser.open(selected_pr['url'])
+                console.print(f"[green]Navegador aberto em: {selected_pr['url']}[/green]")
+                
+            questionary.press_any_key_to_continue("\nPressione qualquer tecla para continuar...").ask()

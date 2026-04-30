@@ -23,15 +23,62 @@ def run_git(args, exit_on_error=False):
             sys.exit(1)
         return False, error_msg
 
+import platform
+
+def get_gh_executable():
+    """Retorna o caminho do executável do gh. Procura em locais comuns se não estiver no PATH."""
+    gh_path = shutil.which("gh")
+    if gh_path:
+        return gh_path
+        
+    # Tratamento para quando acabou de instalar no Windows e o PATH não atualizou no terminal atual
+    if platform.system() == "Windows":
+        common_paths = [
+            r"C:\Program Files\GitHub CLI\gh.exe",
+            os.path.expandvars(r"%LocalAppData%\Programs\GitHub CLI\gh.exe")
+        ]
+        
+        # Busca recursiva rápida na pasta do WinGet caso a versão mude no nome da pasta
+        winget_dir = os.path.expandvars(r"%LocalAppData%\Microsoft\WinGet\Packages")
+        if os.path.exists(winget_dir):
+            for d in os.listdir(winget_dir):
+                if d.lower().startswith("github.cli"):
+                    path = os.path.join(winget_dir, d, "gh.exe")
+                    if os.path.exists(path):
+                        common_paths.append(path)
+                        
+        for path in common_paths:
+            if os.path.exists(path):
+                return path
+                
+    return None
+
 def has_gh_cli():
     """Verifica se o GitHub CLI (gh) está instalado."""
-    return shutil.which("gh") is not None
+    return get_gh_executable() is not None
+
+def check_gh_auth():
+    """Verifica se o usuário está autenticado no GitHub CLI."""
+    gh_exe = get_gh_executable()
+    if not gh_exe:
+        return False
+    
+    try:
+        # Redireciona a saída de erro padrão para stdout e checa se o comando tem sucesso
+        result = subprocess.run([gh_exe, "auth", "status"], capture_output=True, text=True)
+        return result.returncode == 0
+    except subprocess.CalledProcessError:
+        return False
 
 def run_gh(args):
     """Executa um comando do GitHub CLI."""
+    gh_exe = get_gh_executable()
+    if not gh_exe:
+        return False, "GitHub CLI (gh) não encontrado no sistema."
+        
     try:
         result = subprocess.run(
-            ["gh"] + args,
+            [gh_exe] + args,
             capture_output=True,
             text=True,
             encoding='utf-8',
