@@ -2,8 +2,6 @@ import os
 import subprocess
 import sys
 import shutil
-from gitflowy.theme import console
-
 def run_git(args, exit_on_error=False):
     """Executa um comando git de forma silenciosa. Retorna (sucesso, output_ou_erro)."""
     try:
@@ -11,7 +9,7 @@ def run_git(args, exit_on_error=False):
             ["git"] + args,
             capture_output=True,
             text=True,
-            encoding='utf-8', # CORREÇÃO 3: Previne quebra de encoding no Windows
+            encoding='utf-8',
             errors='replace',
             check=True
         )
@@ -19,7 +17,7 @@ def run_git(args, exit_on_error=False):
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.strip() if e.stderr else (e.stdout.strip() if e.stdout else str(e))
         if exit_on_error:
-            console.print(f"[bold red]Erro crítico no Git:[/bold red] {error_msg}")
+            print(f"Erro crítico no Git: {error_msg}", file=sys.stderr)
             sys.exit(1)
         return False, error_msg
 
@@ -91,12 +89,13 @@ def run_gh(args):
         return False, error_msg
 
 def is_git_repo():
-    """Verifica se a pasta atual é um repositório Git."""
-    return os.path.isdir(".git") or run_git(["rev-parse", "--is-inside-work-tree"])[0]
+    """Verifica se a pasta atual está dentro de um repositório Git válido."""
+    success, output = run_git(["rev-parse", "--is-inside-work-tree"])
+    return success and output.strip() == "true"
 
 def get_changed_files():
     """Obtém a lista de arquivos modificados, adicionados ou deletados."""
-    # CORREÇÃO 2: Evita aspas e usa -uall para mostrar arquivos dentro de pastas untracked
+    # Evita aspas e usa -uall para mostrar arquivos dentro de pastas untracked
     success, output = run_git(["-c", "core.quotePath=false", "status", "--porcelain", "-uall"])
     if not success or not output:
         return []
@@ -109,7 +108,6 @@ def get_changed_files():
             # Trata o caso de arquivos renomeados no Git (ex: R  old -> new)
             actual_path = raw_path.split(" -> ")[-1] if " -> " in raw_path else raw_path
             
-            # Trabalhando com Dicionário, eliminamos bugs de fatiamento de strings
             files.append({
                 "status": status,
                 "raw_path": raw_path,
@@ -128,6 +126,22 @@ def get_branches():
     current_branch = current if success else ""
     
     return current_branch, [b for b in branches if b]
+
+def get_remotes():
+    """Retorna a lista de nomes de repositórios remotos configurados."""
+    success, output = run_git(["remote"])
+    if not success or not output:
+        return []
+    return [r.strip() for r in output.split("\n") if r.strip()]
+
+def get_default_remote():
+    """Retorna o remote padrão (origin se existir, senão o primeiro configurado ou 'origin')."""
+    remotes = get_remotes()
+    if not remotes:
+        return "origin"
+    if "origin" in remotes:
+        return "origin"
+    return remotes[0]
 
 def get_tags():
     """Retorna a lista de tags existentes no repositório com suas datas de criação."""
