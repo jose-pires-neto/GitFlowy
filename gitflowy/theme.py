@@ -19,6 +19,7 @@ custom_style = questionary.Style([
     ('highlighted', 'fg:#00BFFF bold'), # Item atual na lista
     ('selected', 'fg:#48D1CC bold'),    # Item de checkbox marcado
     ('instruction', 'fg:#858585'),      # Dicas (cinza)
+    ('separator', 'fg:#6272a4 italic'), # Divisores de seção em cinza discreto
 ])
 
 # Aplicando o tema e o marcador '>' em todos os prompts automaticamente (Monkey Patch)
