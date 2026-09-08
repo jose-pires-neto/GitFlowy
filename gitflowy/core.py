@@ -13,7 +13,7 @@ def run_git(args, exit_on_error=False):
             errors='replace',
             check=True
         )
-        return True, result.stdout.strip()
+        return True, result.stdout.rstrip("\r\n")
     except subprocess.CalledProcessError as e:
         error_msg = e.stderr.strip() if e.stderr else (e.stdout.strip() if e.stdout else str(e))
         if exit_on_error:
@@ -105,9 +105,7 @@ def get_changed_files():
         if len(line) > 2:
             status = line[:2]
             raw_path = line[3:]
-            # Trata o caso de arquivos renomeados no Git (ex: R  old -> new)
             actual_path = raw_path.split(" -> ")[-1] if " -> " in raw_path else raw_path
-            
             files.append({
                 "status": status,
                 "raw_path": raw_path,
