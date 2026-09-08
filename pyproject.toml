@@ -4,16 +4,20 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gitflowy"
-version = "0.1.0"
-description = "Assistente de Commits Semânticos interativo e elegante para o terminal."
+version = "0.2.0"
+description = "Assistente Git interativo, elegante e multiplataforma para o terminal."
 readme = "README.md"
-requires-python = ">=3.7"
+requires-python = ">=3.9"
 dependencies = [
-    "rich",
-    "questionary"
+    "rich>=13.0.0",
+    "questionary>=2.0.0"
 ]
 
-# Aqui acontece a mágica! 
-# 'gflow' será o comando que o usuário vai digitar no terminal.
+[project.optional-dependencies]
+test = [
+    "pytest>=7.0.0",
+    "pytest-mock>=3.10.0"
+]
+
 [project.scripts]
 gflow = "gitflowy.main_app:main"
